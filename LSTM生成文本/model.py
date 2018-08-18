@@ -1,10 +1,11 @@
 import tensorflow as tf
 import numpy as np
 from file_parse import vocab
-# from train import n_hidden_units
+from file_parse import vocab_to_int,int_to_vocab,vocab
 
 num_class = len(vocab)
 n_hidden_units = 128
+keep_prob = 0.5
 # x.shape = (n_seqs,n_steps),这里 n_seqs 被视作 batch_size，目前是input_size = 1
 weights = {
     'in' : tf.Variable(tf.random_normal([num_class,n_hidden_units]),tf.float32),
@@ -42,8 +43,10 @@ def build_optimizer(loss, learning_rate, grad_clip):
 
 class LSTM:
     def __init__(self,num_class,batch_size =64,num_steps =50,hidden_units=128,layer_num = 2,
-                 lr = 0.01 ,grad_clip=5,w = weights,bia = bias):
-
+                 lr = 0.01 ,grad_clip=5,w = weights,bia = bias,is_predicting = False,predic_input_num =1):
+        if is_predicting == True:
+            batch_size = predic_input_num #如果是要预测的话，batch_size=predic_input_num
+            num_steps = 1 # 步数设为1，每输入一句话，就预测一句话
         #清除一些多余的图结构
         # tf.reset_default_graph()
         # 输入数据的input_size = 1, batch_size=64   num_steps=50
@@ -72,12 +75,51 @@ class LSTM:
         # print(self.final_state[1][1].shape)
         # print(output.shape)
         print('\n')
-        # print(self.prediction.shape)
+        print('这里是lstm函数',self.prediction.shape)
         # print(self.label.shape)
         self.loss = calculate_loss(self.prediction,self.label,num_class)
 
         self.optimizer = build_optimizer(self.loss,lr,grad_clip = grad_clip)
 
+#定义一个生成文字的函数，当模型训练好了就调用这个函数
+def generate_novel(head_words,out_amount):
+    directory = 'E:/py_pro/poem_gen/checkpoints/'
+    location = 'E:/py_pro/poem_gen/checkpoints'
+    print('打开已经训练好的模型...')
+    input_words = [c for c in head_words]#将输入的句子划分成字？
+    input_encode = list(map(lambda x:vocab_to_int[x],input_words)) #将输入的汉字映射成数字
+    print(input_encode)
+
+    novel_model = LSTM(num_class=len(vocab),is_predicting=True,predic_input_num=len(input_encode))
+    out = [] #定义一个空列表,用来存放生成的汉字
+    with tf.Session() as sess1:
+        print('开始加载图...')
+        my_saver = tf.train.import_meta_graph(directory+'end_iter.meta')#加载图结构
+        my_saver.restore(sess1,tf.train.latest_checkpoint(location))#取最后一个保存点
+        print('模型加载成功 !')
+        new_state = sess1.run(novel_model.init_state)#将模型训练得到最后一个状态作为训练的初始状态
+        feed ={ novel_model.inputs : input_encode,
+                novel_model.keep_prob:keep_prob,
+                novel_model.init_state:new_state}
+        #模型预测输出，并输出最后的状态，作为下一次的初始状态,这里根据输入预测出了第一句话
+        pred,new_state = sess1.run([novel_model.prediction,novel_model.final_state],feed_dict=feed)
+        #这里的prediction是一个( time_steps*batch_size , 3881)形状的矩阵
+
+        pred_index = np.argwhere(pred == 1)[:][1]#np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
+        out.append(int_to_vocab(pred_index))
+
+        for i in range(out_amount):
+            feed = {novel_model.inputs: pred,
+                    novel_model.keep_prob: keep_prob,
+                    novel_model.init_state: new_state}
+            pred, new_state = sess1.run([novel_model.prediction, novel_model.final_state], feed_dict=feed)
+
+            # prediction是一个( time_steps*batch_size , 3881)形状的矩阵
+            # np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
+            pred_index = np.argwhere(pred == 1)[:][1]
+            out.append(int_to_vocab(pred_index))
+
+    return out #预测完毕，返回
 
 if __name__ == '__main__':
     print('success!')
