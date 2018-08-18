@@ -18,7 +18,7 @@ save_freq = 200
 keep_prob = 0.5
 #-----------------超参数-------------------
 
-def train_preidc(state):
+def train_predict(state):
     if state == 'train':
         model = LSTM(len(vocab),batch_size,num_steps=num_steps , lr=learning_rate)
 
@@ -57,7 +57,7 @@ def train_preidc(state):
         print('状态错误，请调试...')
 
 
-train_preidc('predict')
+train_predict('predict')
 
 if __name__ == '__main__':
     print('this is the main code !')
