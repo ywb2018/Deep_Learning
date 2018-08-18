@@ -23,7 +23,7 @@ def train_preidc(state):
         model = LSTM(len(vocab),batch_size,num_steps=num_steps , lr=learning_rate)
 
         init = tf.global_variables_initializer()
-        saver = tf.train.Saver(max_to_keep= 200)
+        saver = tf.train.Saver(max_to_keep= 100)
 
         with tf.Session() as sess:
             sess.run(init)
@@ -43,13 +43,13 @@ def train_preidc(state):
 
                     print('Epoch : {} / {}...'.format(ep+1,epoches),'  Training steps :{}'.format(counter),
                     '  Training loss : {:.4f}'.format(batch_loss),'  {:.4f} sec/batch'.format(end-start))
-                    if  counter % 10 == 0 :
+                    if  counter % save_freq == 0 :
                         saver.save(sess,'checkpoints/iter{}'.format(counter))
                         print('\n--------save ok!---------\n')
 
                 saver.save(sess,'checkpoints/end_iter')
     elif state == 'predict':
-        word = '在很久以前'
+        word = '在很久很久以前，'
         novel = generate_novel(word,1000)
         print(novel)
 

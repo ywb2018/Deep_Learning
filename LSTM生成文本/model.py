@@ -105,17 +105,18 @@ def generate_novel(head_words,out_amount):
         pred,new_state = sess1.run([novel_model.prediction,novel_model.final_state],feed_dict=feed)
         #这里的prediction是一个( time_steps*batch_size , 3881)形状的矩阵
 
+        #这里是获取每一行为1的列索引，也就是进行onehot解码
         pred_index = np.argwhere(pred == 1)[:][1]#np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
-        out.append(int_to_vocab(pred_index))
+        out.append(int_to_vocab(pred_index))#添加第一句话
 
-        for i in range(out_amount):
+        for i in range(out_amount-1):
             feed = {novel_model.inputs: pred,
                     novel_model.keep_prob: keep_prob,
                     novel_model.init_state: new_state}
             pred, new_state = sess1.run([novel_model.prediction, novel_model.final_state], feed_dict=feed)
 
             # prediction是一个( time_steps*batch_size , 3881)形状的矩阵
-            # np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
+            # np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字，onehot解码
             pred_index = np.argwhere(pred == 1)[:][1]
             out.append(int_to_vocab(pred_index))
 
