@@ -7,10 +7,10 @@ from file_parse import get_batches,vocab,encode
 
 #-----------------超参数-------------------
 
-learning_rate = 0.01
+learning_rate = 0.001
 traing_iters = 5000
 n_hidden_units = 128
-batch_size = 64
+batch_size = 128
 num_steps = 50
 num_class = len(encode)
 epoches = 20
@@ -28,7 +28,7 @@ def train_predict(state):
         with tf.Session() as sess:
             sess.run(init)
 
-            for ep in range(epoches):
+            for ep in range(1):
                 new_state = sess.run(model.init_state) #每次跑完一个epoch，都初始化一下状态
                 # print(np.shape(new_state))
                 counter = 0
@@ -44,19 +44,20 @@ def train_predict(state):
                     print('Epoch : {} / {}...'.format(ep+1,epoches),'  Training steps :{}'.format(counter),
                     '  Training loss : {:.4f}'.format(batch_loss),'  {:.4f} sec/batch'.format(end-start))
                     if  counter % save_freq == 0 :
-                        saver.save(sess,'checkpoints/iter{}'.format(counter))
+                        saver.save(sess,'checkpoints/iter{}.ckpt'.format(counter))
                         print('\n--------save ok!---------\n')
 
-                saver.save(sess,'checkpoints/end_iter')
+                saver.save(sess,'checkpoints/end_iter.ckpt')
     elif state == 'predict':
-        word = '在很久很久以前，'
+        word = '传说在天地间有一块灵石'
+
         novel = generate_novel(word,1000)
-        print(novel)
+        print(''.join(novel))
 
     else:
         print('状态错误，请调试...')
 
-
+# train_predict('train')
 train_predict('predict')
 
 if __name__ == '__main__':

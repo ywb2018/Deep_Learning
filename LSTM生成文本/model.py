@@ -75,7 +75,7 @@ class LSTM:
         # print(self.final_state[1][1].shape)
         # print(output.shape)
         print('\n')
-        print('这里是lstm函数',self.prediction.shape)
+        # print('这里是lstm函数',self.prediction.shape)
         # print(self.label.shape)
         self.loss = calculate_loss(self.prediction,self.label,num_class)
 
@@ -84,18 +84,21 @@ class LSTM:
 #定义一个生成文字的函数，当模型训练好了就调用这个函数
 def generate_novel(head_words,out_amount):
     directory = 'E:/py_pro/poem_gen/checkpoints/'
-    location = 'E:/py_pro/poem_gen/checkpoints'
     print('打开已经训练好的模型...')
     input_words = [c for c in head_words]#将输入的句子划分成字？
     input_encode = list(map(lambda x:vocab_to_int[x],input_words)) #将输入的汉字映射成数字
-    print(input_encode)
-
-    novel_model = LSTM(num_class=len(vocab),is_predicting=True,predic_input_num=len(input_encode))
+    input_encode = np.reshape(input_encode,[np.shape(input_encode)[0],1])
+    # print(input_encode)
+    novel_model = LSTM(num_class=len(vocab),is_predicting=True,predic_input_num=np.shape(input_encode)[0])
     out = [] #定义一个空列表,用来存放生成的汉字
+    tempt =[]
+    predict_saver = tf.train.Saver()
     with tf.Session() as sess1:
         print('开始加载图...')
-        my_saver = tf.train.import_meta_graph(directory+'end_iter.meta')#加载图结构
-        my_saver.restore(sess1,tf.train.latest_checkpoint(location))#取最后一个保存点
+        # my_saver = tf.train.import_meta_graph(directory+'end_iter.meta')#加载图结构
+        # my_saver.restore(sess1,tf.train.latest_checkpoint(location))#取最后一个保存点
+        checkpoint = tf.train.latest_checkpoint(directory)
+        predict_saver.restore(sess1,checkpoint)
         print('模型加载成功 !')
         new_state = sess1.run(novel_model.init_state)#将模型训练得到最后一个状态作为训练的初始状态
         feed ={ novel_model.inputs : input_encode,
@@ -104,21 +107,33 @@ def generate_novel(head_words,out_amount):
         #模型预测输出，并输出最后的状态，作为下一次的初始状态,这里根据输入预测出了第一句话
         pred,new_state = sess1.run([novel_model.prediction,novel_model.final_state],feed_dict=feed)
         #这里的prediction是一个( time_steps*batch_size , 3881)形状的矩阵
-
+        # print('热独码解码后的形状为：',np.argwhere(pred == 1))
         #这里是获取每一行为1的列索引，也就是进行onehot解码
-        pred_index = np.argwhere(pred == 1)[:][1]#np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
-        out.append(int_to_vocab(pred_index))#添加第一句话
+        # pred_index = np.argwhere(pred == 1)[:][1]#np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字
+        pred_index = np.argmax(pred,axis=1)
+        # print(pred_index.shape)
+        for c in pred_index:
+            tempt.append(int_to_vocab[c])
+        out.append(''.join(tempt))
+        tempt.clear()
 
+        pred = pred_index.reshape([np.shape(pred_index)[0],1])
+        # print(pred.shape)
         for i in range(out_amount-1):
             feed = {novel_model.inputs: pred,
                     novel_model.keep_prob: keep_prob,
                     novel_model.init_state: new_state}
-            pred, new_state = sess1.run([novel_model.prediction, novel_model.final_state], feed_dict=feed)
 
+            prediction, new_state = sess1.run([novel_model.prediction, novel_model.final_state], feed_dict=feed)
+            # print(prediction.shape)
             # prediction是一个( time_steps*batch_size , 3881)形状的矩阵
-            # np.argwhere返回的是一个二维数组（a，b）,这里的b就是输出汉字对应的数字，onehot解码
-            pred_index = np.argwhere(pred == 1)[:][1]
-            out.append(int_to_vocab(pred_index))
+            # 这里的b就是输出汉字对应的数字，onehot解码
+            pred_index = np.argmax(prediction, axis=1)
+            for c in pred_index:
+                tempt.append(int_to_vocab[c])
+            out.append(''.join(tempt))
+            tempt.clear()
+            pred = pred_index.reshape([np.shape(pred_index)[0], 1])
 
     return out #预测完毕，返回
 
